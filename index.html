@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-512.png" />
+    <title>LLM Chain Processor</title>
+    <style>
+      /* Prevent pull-to-refresh on mobile devices and scrolling rubber-band on empty stages */
+      html, body {
+        overscroll-behavior-y: contain;
+        background-color: #000000;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          const isDev = window.location.hostname.includes('localhost') || 
+                        window.location.hostname.includes('127.0.0.1') || 
+                        window.location.hostname.includes('-dev-');
+          
+          if (isDev) {
+            // Actively unregister any service worker in development mode to prevent cached asset freezes
+            navigator.serviceWorker.getRegistrations().then((registrations) => {
+              for (let registration of registrations) {
+                registration.unregister().then((success) => {
+                  if (success) {
+                    console.log('Successfully unregistered development service worker.');
+                    // Force refresh to clear cache memory if a service worker was active
+                    window.location.reload();
+                  }
+                });
+              }
+            });
+
+            // Also clear caches to ensure fresh assets
+            if (window.caches) {
+              caches.keys().then((names) => {
+                for (let name of names) {
+                  caches.delete(name);
+                }
+              });
+            }
+          } else {
+            // Safely register ServiceWorker only in production/shared domains
+            navigator.serviceWorker.register('/sw.js')
+              .then((reg) => console.log('ServiceWorker registered successfully:', reg.scope))
+              .catch((err) => console.error('ServiceWorker registration failed:', err));
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
+
