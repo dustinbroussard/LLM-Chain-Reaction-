@@ -439,16 +439,18 @@ export default function App() {
 
   // Sync state changes to storage
   const saveChainToLibrary = (updatedChain: Chain) => {
-    const list = [...savedChains];
-    const matchIdx = list.findIndex(c => c.id === updatedChain.id);
     const stamped = { ...updatedChain, updatedAt: new Date().toISOString() };
-    if (matchIdx >= 0) {
-      list[matchIdx] = stamped;
-    } else {
-      list.push(stamped);
-    }
-    setSavedChains(list);
-    localStorage.setItem("llm-chain-library", JSON.stringify(list));
+    setSavedChains(prev => {
+      const matchIdx = prev.findIndex(c => c.id === stamped.id);
+      const next = [...prev];
+      if (matchIdx >= 0) {
+        next[matchIdx] = stamped;
+      } else {
+        next.push(stamped);
+      }
+      localStorage.setItem("llm-chain-library", JSON.stringify(next));
+      return next;
+    });
     localStorage.setItem("llm-chain-active-id", stamped.id);
     setIsDirty(false);
   };
@@ -629,13 +631,14 @@ export default function App() {
   };
 
   const updateStageOutput = (stageId: string, val: string) => {
-    const editedStages = activeChain.stages.map(stg => {
-      if (stg.id === stageId) {
-        return { ...stg, output: val };
-      }
-      return stg;
+    setActiveChain(prev => {
+      const current = prev.stages.find(stg => stg.id === stageId);
+      if (current && current.output === val) return prev;
+      const editedStages = prev.stages.map(stg =>
+        stg.id === stageId ? { ...stg, output: val } : stg
+      );
+      return { ...prev, stages: editedStages };
     });
-    setActiveChain(prev => ({ ...prev, stages: editedStages }));
   };
 
   const addOutputToHistory = (stageId: string, content: string) => {
