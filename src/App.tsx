@@ -223,6 +223,11 @@ export default function App() {
   const [ollamaModels, setOllamaModels] = useState<{ id: string; name: string }[]>([]);
   const [isOllamaSearching, setIsOllamaSearching] = useState<boolean>(false);
 
+  // Gemini models catalog list
+  const [geminiCatalog, setGeminiCatalog] = useState<{ id: string; name: string }[]>(
+    POPULAR_GEMINI_MODELS
+  );
+
   // OpenRouter models catalog list
   const [openRouterCatalog, setOpenRouterCatalog] = useState<{ id: string; name: string }[]>(
     STATIC_OPENROUTER_MODELS
@@ -326,6 +331,31 @@ export default function App() {
   useEffect(() => {
     fetchOllamaModels();
   }, [globalEngine]);
+
+  // Read Gemini models catalogue dynamically
+  useEffect(() => {
+    const loadGeminiCatalog = async () => {
+      try {
+        const url = customGeminiApiKey 
+          ? `/api/models/gemini?key=${encodeURIComponent(customGeminiApiKey)}` 
+          : "/api/models/gemini";
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.models.length > 0) {
+            const mapped = data.models.map((m: any) => ({
+              id: m.id,
+              name: m.name || m.id
+            }));
+            setGeminiCatalog(mapped);
+          }
+        }
+      } catch (err) {
+        console.warn("Unable to load dynamic Gemini catalogue.", err);
+      }
+    };
+    loadGeminiCatalog();
+  }, [customGeminiApiKey]);
 
   // Read OpenRouter models catalogue dynamically
   useEffect(() => {
@@ -1287,9 +1317,9 @@ export default function App() {
 
   // Global model list combining presets
   const combinedModelsList = [
-    ...POPULAR_GEMINI_MODELS,
-    ...openRouterCatalog.map(m => ({ id: m.id, name: m.name, provider: "openrouter" })),
-    ...ollamaModels.map(m => ({ id: m.id, name: m.name, provider: "ollama" }))
+    ...geminiCatalog.map(m => ({ id: m.id, name: m.name, provider: "google" as const })),
+    ...openRouterCatalog.map(m => ({ id: m.id, name: m.name, provider: "openrouter" as const })),
+    ...ollamaModels.map(m => ({ id: m.id, name: m.name, provider: "ollama" as const }))
   ];
 
   return (
@@ -1456,7 +1486,7 @@ export default function App() {
               >
                 {/* Gemini models heading */}
                 <optgroup label="Google Gemini API (Server-side)">
-                  {POPULAR_GEMINI_MODELS.map(m => (
+                  {geminiCatalog.map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </optgroup>

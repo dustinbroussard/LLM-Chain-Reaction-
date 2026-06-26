@@ -32,7 +32,55 @@ app.get("/api/health", (req: Request, res: Response) => {
   res.json({ status: "ok", time: new Date().toISOString() });
 });
 
-// 2. Fetch OpenRouter Models dynamically with custom static fallback
+// 2. Fetch Gemini Models dynamically with custom static fallback
+app.get("/api/models/gemini", async (req: Request, res: Response) => {
+  const customKey = req.query.key as string | undefined;
+  const apiKey = customKey || process.env.GEMINI_API_KEY;
+
+  try {
+    if (!apiKey) {
+      throw new Error("No Gemini API key provided.");
+    }
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+
+    const response = await ai.models.list();
+    const modelsList: any[] = [];
+    
+    for await (const m of response) {
+      if (m.supportedActions?.includes("generateContent")) {
+        const id = m.name.startsWith("models/") ? m.name.substring(7) : m.name;
+        modelsList.push({
+          id,
+          name: m.displayName || id,
+        });
+      }
+    }
+
+    res.json({ success: true, models: modelsList });
+  } catch (error: any) {
+    console.warn("Falling back to static Gemini models list on API error:", error.message);
+    res.json({
+      success: false,
+      message: error.message,
+      models: [
+        { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash" },
+        { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro (Preview)" },
+        { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash-Lite" },
+        { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+        { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" }
+      ]
+    });
+  }
+});
+
+// 2b. Fetch OpenRouter Models dynamically with custom static fallback
 app.get("/api/models/openrouter", async (req: Request, res: Response) => {
   try {
     const response = await fetch("https://openrouter.ai/api/v1/models", {
